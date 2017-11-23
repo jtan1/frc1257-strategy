@@ -74,54 +74,69 @@ for t, e in eventsToScout.items():
     print("[STATUS]: Choosing matches for " + t)
     # Get a list of their matches from TBA
     matchList = tbaRequest("team/" + t + "/event/" + e + "/matches/keys")
+    # Initialize allMatches, which represents each match with a number (to help with sorting)
     allMatches = {"qm": {}, "qf": {}, "sf": {}, "f": {}}
+    # Add every match in the TBA request to allMatches
     for m in matchList:
-        for i, c in enumerate(m):
-            if(c == "_"):
-                matchID = m[i+1:]
-                break
+        # Remove the event data from the match key
+        matchID = m.split("_")[1]
+        # If the match is from quals, add it to allMatches["qm"]
         if(matchID[0:2] == "qm"):
             allMatches["qm"][int(matchID[2:])] = m
+        # If the match is from quarters, add it to allMatches["qf"]
         elif(matchID[0:2] == "qf"):
             allMatches["qf"][10*int(matchID[2]) + int(matchID[4:])] = m
+        # If the match is from semis, add it to allMatches["sf"]
         elif(matchID[0:2] == "sf"):
             allMatches["sf"][10*int(matchID[2]) + int(matchID[4:])] = m
+        # If the match is from finals, add it to allMatches["f"]
         elif(matchID[0:2] == "f"):
             allMatches["f"][10*int(matchID[1]) + int(matchID[3:])] = m
+    # Sort each of the components of allMatches to create ordered lists of every match type (in number form)
     sortedQM = sorted(allMatches["qm"])
     sortedQF = sorted(allMatches["qf"])
     sortedSF = sorted(allMatches["sf"])
     sortedF = sorted(allMatches["f"])
+    # Initialize a list matchesToScout[t] to hold chosen matches
     matchesToScout[t] = []
+    # If scouting two matches, choose one playoffs match (if possible) and the rest quals
     if(numToScout == 2):
-        playoffsChosen = False
+        # If a finals match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["f"][sortedF.pop()])
         except:
             True
+        # If a semis match is available and no playoffs have been chosen, then choose it
         if(len(matchesToScout[t]) < 1):
             try:
                 matchesToScout[t].append(allMatches["sf"][sortedSF.pop()])
             except:
                 True
+        # If a quarters match is available and no playoffs have been chosen, then choose it
         if(len(matchesToScout[t]) < 1):
             try:
                 matchesToScout[t].append(allMatches["qf"][sortedQF.pop()])
             except:
                 True
+        # Keep choosing quals until two matches have been chosen
         while(len(matchesToScout[t]) < 2 and len(sortedQM) > 0):
             matchesToScout[t].append(allMatches["qm"][sortedQM.pop()])
+    # If scouting four matches, choose two playoffs matches (from different levels if possible) and the rest quals
     else:
+        # If a finals match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["f"][sortedF.pop()])
         except:
             True
+        # If a semis match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["sf"][sortedSF.pop()])
         except:
             True
+        # Keep choosing quarteres until two playoffs matches have been chosen
         while(len(matchesToScout[t]) < 2 and len(sortedQF) > 0):
             matchesToScout[t].append(allMatches["qf"][sortedQF.pop()])
+        # Keep choosing quals until four matches have been chosen
         while(len(matchesToScout[t]) < 4 and len(sortedQM) > 0):
             matchesToScout[t].append(allMatches["qm"][sortedQM.pop()])
 print(matchesToScout)
