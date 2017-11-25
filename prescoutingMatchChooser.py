@@ -73,7 +73,13 @@ matchesToScout = {}
 for t, e in eventsToScout.items():
     print("[STATUS]: Choosing matches for " + t)
     # Get a list of their matches from TBA
-    matchList = tbaRequest("team/" + t + "/event/" + e + "/matches/keys")
+    matchReq = tbaRequest("team/" + t + "/event/" + e + "/matches")
+    # Initialize matchList to hold a list of match keys
+    matchList = []
+    # If the match has videos, add it to matchList
+    for match in matchReq:
+        if(match["videos"] != []):
+            matchList.append(match["key"])
     # Initialize allMatches, which represents each match with a number (to help with sorting)
     allMatches = {"qm": {}, "qf": {}, "sf": {}, "f": {}}
     # Add every match in the TBA request to allMatches
