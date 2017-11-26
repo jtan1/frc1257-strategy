@@ -1,16 +1,19 @@
-import json, datetime, http.client
-# HTTP Connection is global so it only has to be made once at the start
-tbaConn = http.client.HTTPConnection("www.thebluealliance.com")
-# Read auth key from tbaAuth.txt, which should be in the same directory as this file
-tbaAuth = open("tbaAuth.txt", "r").read()
+import json, datetime, requests
+# Create session for all TBA requests
+s = requests.Session()
+# Try to read authKey from tbaAuth.txt
+try:
+    authKey = open("tbaAuth.txt", "r").read()
+    s.headers.update({'X-TBA-Auth-Key': authKey})
+# Exit program if tbaAuth.txt does not exist
+except FileNotFoundError:
+    print("[ERROR]: Auth key not found. Please include your auth key in a text file named tbaAuth.txt in the same directory as this file.")
+    exit()
 
-# Make a TBA request, returns json object
+# Makes a TBA request, returns content of request as json
 def tbaRequest(query):
-    global tbaConn, tbaAuth
-    # Send "GET" HTTP request
-    tbaConn.request("GET", "/api/v3/" + query + "?X-TBA-Auth-Key=" + tbaAuth)
-    # Read request and convert to json object
-    return json.loads(tbaConn.getresponse().read())
+    r = s.get("http://www.thebluealliance.com/api/v3/" + query)
+    return json.loads(r.text)
 
 # If event is in the future, or if event type is undefined, offseason, or preseason, return that it is not suitable for scouting
 isScoutable = lambda eventType, eventDate: not (eventType < 0 or eventType > 5 or eventDate > datetime.date.today())
@@ -28,7 +31,7 @@ while(eventKeyInvalid):
     try:
         for e in eventTeamsReq:
             teamKeys.append(e["key"])
-    except:
+    except TypeError:
         eventKeyInvalid = True
         print("[ERROR]: This event doesn't exist. Try again.")
 
@@ -40,7 +43,7 @@ while(numToScoutInvalid):
         numToScout = int(input("How many matches to prescout per team? (2 or 4): "))
         if(not(numToScout == 2 or numToScout == 4)):
             numToScoutInvalid = True
-    except:
+    except TypeError:
         numToScoutInvalid = True
     if(numToScoutInvalid):
         print("[ERROR]: Matches to scout must be either 2 or 4. Try again.")
@@ -78,8 +81,11 @@ for t, e in eventsToScout.items():
     matchList = []
     # If the match has videos, add it to matchList
     for match in matchReq:
-        if(match["videos"] != []):
-            matchList.append(match["key"])
+        try:
+            if(match["videos"] != []):
+                matchList.append(match["key"])
+        except TypeError:
+            pass
     # Initialize allMatches, which represents each match with a number (to help with sorting)
     allMatches = {"qm": {}, "qf": {}, "sf": {}, "f": {}}
     # Add every match in the TBA request to allMatches
@@ -110,20 +116,20 @@ for t, e in eventsToScout.items():
         # If a finals match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["f"][sortedF.pop()])
-        except:
-            True
+        except IndexError:
+            pass
         # If a semis match is available and no playoffs have been chosen, then choose it
         if(len(matchesToScout[t]) < 1):
             try:
                 matchesToScout[t].append(allMatches["sf"][sortedSF.pop()])
-            except:
-                True
+            except IndexError:
+                pass
         # If a quarters match is available and no playoffs have been chosen, then choose it
         if(len(matchesToScout[t]) < 1):
             try:
                 matchesToScout[t].append(allMatches["qf"][sortedQF.pop()])
-            except:
-                True
+            except IndexError:
+                pass
         # Keep choosing quals until two matches have been chosen
         while(len(matchesToScout[t]) < 2 and len(sortedQM) > 0):
             matchesToScout[t].append(allMatches["qm"][sortedQM.pop()])
@@ -132,13 +138,13 @@ for t, e in eventsToScout.items():
         # If a finals match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["f"][sortedF.pop()])
-        except:
-            True
+        except IndexError:
+            pass
         # If a semis match is available, then choose it
         try:
             matchesToScout[t].append(allMatches["sf"][sortedSF.pop()])
-        except:
-            True
+        except IndexError:
+            pass
         # Keep choosing quarteres until two playoffs matches have been chosen
         while(len(matchesToScout[t]) < 2 and len(sortedQF) > 0):
             matchesToScout[t].append(allMatches["qf"][sortedQF.pop()])
